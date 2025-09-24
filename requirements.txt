@@ -1,0 +1,15 @@
+# Azure AI Foundry + Semantic Kernel Integration Requirements
+# Core Azure AI and Semantic Kernel libraries
+semantic-kernel>=1.37.0
+azure-ai-agents>=1.2.0b3
+azure-ai-projects>=1.1.0b3
+azure-identity>=1.25.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Async support for Jupyter
+nest-asyncio>=1.6.0
+
+# Core dependencies (typically auto-installed)
+pathlib2>=2.3.0; python_version < '3.4'
