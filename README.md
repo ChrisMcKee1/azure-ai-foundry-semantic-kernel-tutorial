@@ -1,12 +1,12 @@
 # Azure AI Foundry + Semantic Kernel Integration
 
-A comprehensive educational project demonstrating how to integrate Azure AI Foundry Agent Service with Semantic Kernel for advanced AI agent workflows, including code interpretation, file generation, and local file management.
+A clean, educational tutorial demonstrating how to integrate Azure AI Foundry Agent Service with Semantic Kernel for code interpretation, file generation, and local file management.
 
 ## 🎯 Purpose
 
-This project showcases the **dual-SDK architecture** pattern for building robust AI agent applications that combine:
-- **Azure AI Foundry Agent Service**: Direct agent creation and management
-- **Semantic Kernel**: Advanced conversation management and agent orchestration
+This project showcases a **streamlined integration pattern** for building AI agent applications that combine:
+- **Azure AI Foundry Agent Service**: Direct agent creation with code interpreter
+- **Semantic Kernel**: Conversation management wrapper
 - **Code Interpreter**: Python code execution with file generation capabilities
 - **File Management**: Secure download and local preservation of agent-generated files
 
@@ -14,21 +14,23 @@ This project showcases the **dual-SDK architecture** pattern for building robust
 
 ```mermaid
 graph TD
-    A[Azure AI Foundry Project] --> B[AgentsClient - Agent Creation]
-    A --> C[AIProjectClient - File Operations]
-    B --> D[Semantic Kernel Wrapper]
-    D --> E[AzureAIAgent + Thread]
-    E --> F[Code Interpreter Tool]
-    F --> G[Generated Files]
-    C --> H[File Download & Local Storage]
+    A[DefaultAzureCredential] --> B[AgentsClient - Agent Creation]
+    A --> C[AIProjectClient - SK Wrapper]
+    A --> D[AIProjectClient - File Operations]
+    B --> E[Agent Definition]
+    E --> F[Semantic Kernel Agent Wrapper]
+    F --> G[Thread + Conversation]
+    G --> H[Code Interpreter Execution]
+    H --> I[Generated Files]
+    D --> J[File Download & Local Storage]
 ```
 
 ### Key Architecture Patterns
 
-1. **Dual-SDK Integration**:
-   - `DefaultAzureCredential` (sync) for Azure AI Foundry operations
-   - `AsyncDefaultAzureCredential` (async) for Semantic Kernel operations
-   - Critical separation prevents coroutine conflicts
+1. **Unified Credential Approach**:
+   - Single `DefaultAzureCredential` for all Azure operations
+   - Simplified authentication without sync/async complications
+   - Cleaner resource management
 
 2. **Microsoft's Recommended File Access**:
    - Uses `AIProjectClient.agents.files.get_content()` pattern
@@ -36,22 +38,22 @@ graph TD
    - Memory-efficient chunk processing
 
 3. **Comprehensive Resource Management**:
-   - Ordered cleanup: threads → agents → clients → credentials
+   - Ordered cleanup: threads → agents → clients
    - Local file preservation while cleaning Azure resources
    - Graceful error handling with None checks
 
 ## 📁 Project Structure
 
 ```
-SKNotebooks/
-├── azure_ai_foundry_semantic_kernel.ipynb      # Main educational notebook
-├── azure_ai_foundry_semantic_kernel_comprehensive.ipynb  # Extended examples
-├── requirements.txt                            # Pinned dependencies
-├── template.env                               # Environment template (committed)
-├── .env                                       # Local configuration (gitignored)
-├── .gitignore                                 # Python/Jupyter optimized
-├── azure_ai_files/downloads/                  # Generated file outputs (gitignored)
-└── README.md                                  # This file
+azure-ai-foundry-semantic-kernel-tutorial/
+├── azure_ai_foundry_semantic_kernel.ipynb    # Main educational notebook
+├── requirements.txt                          # Pinned dependencies  
+├── .env.template                            # Environment template (committed)
+├── .env                                     # Local configuration (gitignored)
+├── .gitignore                              # Python/Jupyter optimized
+├── .github/copilot-instructions.md        # AI assistant guidance
+├── azure_ai_files/downloads/              # Generated file outputs (gitignored)
+└── README.md                              # This file
 ```
 
 ## 🚀 Quick Start
@@ -67,8 +69,8 @@ SKNotebooks/
 
 1. **Clone and Setup**:
    ```bash
-   git clone <repository-url>
-   cd SKNotebooks
+   git clone https://github.com/ChrisMcKee1/azure-ai-foundry-semantic-kernel-tutorial.git
+   cd azure-ai-foundry-semantic-kernel-tutorial
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1  # Windows PowerShell
    ```
@@ -80,8 +82,10 @@ SKNotebooks/
 
 3. **Configure Environment**:
    ```bash
-   copy template.env .env
-   # Edit .env with your Azure AI Foundry project details
+   copy .env.template .env
+   # Edit .env with your Azure AI Foundry project details:
+   # PROJECT_ENDPOINT=https://your-project.region.api.azureml.ms
+   # MODEL_DEPLOYMENT_NAME=gpt-4o
    ```
 
 4. **Run the Notebook**:
@@ -91,9 +95,14 @@ SKNotebooks/
 
 ## 📚 Key Features Demonstrated
 
-### 1. Agent Creation & Management
+### 1. Unified Credential & Agent Creation
+
 ```python
-# Azure AI Foundry Agent with Code Interpreter
+# Single credential for all operations
+credential = DefaultAzureCredential()
+foundry_client = AgentsClient(endpoint=os.environ["PROJECT_ENDPOINT"], credential=credential)
+
+# Create agent with code interpreter
 code_interpreter = CodeInterpreterTool()
 agent_definition = foundry_client.create_agent(
     model=os.environ["MODEL_DEPLOYMENT_NAME"],
@@ -104,32 +113,34 @@ agent_definition = foundry_client.create_agent(
 )
 ```
 
-### 2. Semantic Kernel Integration
+### 2. Semantic Kernel Wrapper
+
 ```python
-# Semantic Kernel wrapper for conversation management
+# Create SK client using same credential
+sk_client = AIProjectClient(endpoint=os.environ["PROJECT_ENDPOINT"], credential=credential)
+
+# Wrap agent with Semantic Kernel
 agent = AzureAIAgent(client=sk_client, definition=agent_definition)
 thread = AzureAIAgentThread(client=sk_client)
 
+# Chat with agent
 async for response in agent.invoke(messages=message, thread=thread):
     print(response.content)
 ```
 
-### 3. File ID Extraction
-```python
-# Extract file IDs from Semantic Kernel responses
-file_ids = []
-for item in response.items:
-    if hasattr(item, 'file_id') and item.file_id:
-        file_ids.append(item.file_id)
-```
+### 3. File Retrieval & Download
 
-### 4. Microsoft-Recommended File Download
 ```python
-# Correct Azure AI Foundry file retrieval pattern
-project_client = AIProjectClient(endpoint=endpoint, credential=credential)
+# Microsoft's recommended file access pattern
+project_client = AIProjectClient(endpoint=os.environ["PROJECT_ENDPOINT"], credential=credential)
+
 with project_client:
     file_content_iterator = project_client.agents.files.get_content(file_id)
     file_data = b''.join(chunk for chunk in file_content_iterator)
+    
+    # Save locally
+    with open(file_path, 'wb') as f:
+        f.write(file_data)
 ```
 
 ## 🔧 Dependencies & Versions
@@ -148,11 +159,13 @@ with project_client:
 ## 🛡️ Security & Best Practices
 
 ### Environment Configuration
-- **Never commit `.env`** - use `template.env` for version control
+
+- **Never commit `.env`** - use `.env.template` for version control
 - **Azure credential management** - uses `DefaultAzureCredential` pattern
 - **Resource cleanup** - comprehensive Azure resource deallocation
 
 ### Error Handling
+
 - **Graceful None checks** - prevents cleanup errors on multiple runs
 - **File operation safety** - proper Iterator[bytes] handling
 - **Fallback patterns** - multiple file ID detection methods
@@ -188,13 +201,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Semantic Kernel Documentation](https://learn.microsoft.com/en-us/semantic-kernel/)
 - [Azure AI Agents SDK](https://learn.microsoft.com/en-us/python/api/overview/azure/ai-agents-readme)
 - [Microsoft Agent Framework](https://github.com/microsoft/semantic-kernel)
-
-## 📞 Support
-
-For issues related to:
-- **Azure AI Foundry**: [Azure Support](https://azure.microsoft.com/support/)
-- **Semantic Kernel**: [GitHub Issues](https://github.com/microsoft/semantic-kernel/issues)
-- **This Project**: Create an issue in this repository
 
 ---
 **Built with ❤️ by the community, following Microsoft's best practices for AI agent development.**
